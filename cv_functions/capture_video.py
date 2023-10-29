@@ -23,8 +23,9 @@ def capture_video(width, height, function, show_log=True, *args):
                 start = time.time()
                 count = 0
                 delay = 0
-            delay_start = time.time()
         ret, frame = capture.read()
+        if show_log:
+            delay_start = time.time()
         frame = cv2.flip(frame, 1)
         frame = function(frame, *args)
         cv2.imshow("VideoFrame", frame)
