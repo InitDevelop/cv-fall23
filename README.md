@@ -32,7 +32,9 @@ pip install -r requirements.txt
 
 ## 프로젝트 구성
 
+### 인식부
 1. 웹캠으로 사용자 얼굴 인식
 2. 인식된 값을 바탕으로 관찰자의 3차원 위치 계산
-3. 계산된 값을 바탕으로 3D Projection
-4. 카메라의 위치 및 lighting으로 렌더링
+### 표현부
+3. 계산된 값을 바탕으로 3D Projection (wireframe rendering)
+4. 카메라의 위치 및 lighting으로 렌더링 (shaded rendering)
