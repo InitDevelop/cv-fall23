@@ -1,21 +1,10 @@
-import numpy as np
-import sys
-
-import pygame.mouse
-from PIL import Image
-import time
-from numba import jit
-import math
-import torch
 from render.project_points import *
-from multiprocessing import Pool
-import cv2
+from render.environment import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
-
 @jit(cache=True)
-def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir):
+def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir, frame, env):
     # points : N,3
     # projected_points : N,2
     # faces : F,3
@@ -29,7 +18,7 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
 
     culling = depth_nums < 0
     faces = faces[culling]
-    face_colors = face_colors[culling]
+    face_colors = env.lambertian(frame,normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
     # index_map = -np.ones((height, width))
@@ -158,6 +147,11 @@ def render_polygon(map, color_map, v, depths, color):
 
 @jit
 def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction):
+    capture = cv2.VideoCapture(0)
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    env = Environment(32,18,120)
+
     #screen = Screen(width = 480, height = 270, caption="mouse controller")
     start = time.time()
     delay = 0
@@ -170,6 +164,8 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
         delay_start = time.time()
         #pos = pygame.mouse.get_pos()
         dt = (time.time() - start) * 0.8
+
+        ret, frame = capture.read()
 
         ry = dt * 1.7#-(pos[0] - 240) / 200
         rx = dt * 1.3#(pos[1] - 135) / 200
@@ -206,7 +202,7 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
 
         get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces, scene_normals_rot.T, face_colors,
                       camera_pos,
-                      camera_direction) # 16ms
+                      camera_direction, frame, env) # 16ms
 
         map -= 1
         map *= -1.5 # 0.6ms
