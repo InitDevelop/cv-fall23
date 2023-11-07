@@ -1,5 +1,6 @@
 from render.project_points import *
 from render.environment import *
+from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
@@ -144,6 +145,68 @@ def render_polygon(map, color_map, v, depths, color):
 
     return map
 
+@jit
+def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
+    # delay_start = time.time()
+    # pos = pygame.mouse.get_pos()
+    dt = (time.time() - start) * 0.8
+
+    ry = dt * 1.7  # -(pos[0] - 240) / 200
+    rx = dt * 1.3  # (pos[1] - 135) / 200
+
+    rotate_mat_z = np.array([
+        [np.cos(dt), -np.sin(dt), 0],
+        [np.sin(dt), np.cos(dt), 0],
+        [0, 0, 1]
+    ])
+
+    rotate_mat_y = np.array([
+        [np.cos(ry), 0, np.sin(ry)],
+        [0, 1, 0],
+        [-np.sin(ry), 0, np.cos(ry)]
+    ])
+
+    rotate_mat_x = np.array([
+        [1, 0, 0],
+        [0, np.cos(rx), -np.sin(rx)],
+        [0, np.sin(rx), np.cos(rx)]
+    ])
+
+    scene_points_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_points.T
+    scene_normals_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_normals.T
+
+    projected_points = default_projector(scene_points_rot.T, 1280, 720, 60, pose)
+
+    map *= 0
+    map += 1
+
+    color_map *= 0
+
+    # ~1.4ms
+
+    get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces,
+                  scene_normals_rot.T, face_colors,
+                  camera_pos,
+                  camera_direction, frame, env)  # 16ms
+
+    map -= 1
+    map *= -1.5  # 0.6ms
+
+    color_map *= map  # 4ms
+
+    '''
+    cv2.imshow("VideoFrame", color_map.numpy())
+
+    delay += time.time() - delay_start
+    count += 1
+
+    if count >= 100:
+        delay_logger.print(delay / count * 1000)
+        delay = 0
+        count = 0
+    '''
+
+    return color_map.numpy()
 
 @jit
 def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction):
@@ -152,7 +215,6 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     env = Environment(32,18,120)
 
-    #screen = Screen(width = 480, height = 270, caption="mouse controller")
     start = time.time()
     delay = 0
     count = 0
@@ -160,80 +222,8 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
     map = torch.ones((720, 1280,1), device=device)
     color_map = torch.zeros((720,1280,3), device=device)
 
-    while cv2.waitKey(1) < 0:
-        delay_start = time.time()
-        #pos = pygame.mouse.get_pos()
-        dt = (time.time() - start) * 0.8
-
-        ret, frame = capture.read()
-
-        ry = dt * 1.7#-(pos[0] - 240) / 200
-        rx = dt * 1.3#(pos[1] - 135) / 200
-
-        rotate_mat_z = np.array([
-            [np.cos(dt), -np.sin(dt), 0],
-            [np.sin(dt), np.cos(dt), 0],
-            [0, 0, 1]
-        ])
-
-        rotate_mat_y = np.array([
-            [np.cos(ry), 0, np.sin(ry)],
-            [0, 1, 0],
-            [-np.sin(ry), 0, np.cos(ry)]
-        ])
-
-        rotate_mat_x = np.array([
-            [1, 0, 0],
-            [0, np.cos(rx), -np.sin(rx)],
-            [0, np.sin(rx), np.cos(rx)]
-        ])
-
-        scene_points_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_points.T
-        scene_normals_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_normals.T
-
-        projected_points = default_projector(scene_points_rot.T, 1280, 720, 60, pose)
-
-        map *= 0
-        map += 1
-
-        color_map *= 0
-
-        # ~1.4ms
-
-        get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces, scene_normals_rot.T, face_colors,
-                      camera_pos,
-                      camera_direction, frame, env) # 16ms
-
-        map -= 1
-        map *= -1.5 # 0.6ms
-
-        color_map *= map # 4ms
-
-        # img[..., 0] = map.T
-        # img[..., 1] = map.T
-        # img[..., 2] = map.T
-
-        # surf = pygame.surfarray.make_surface(map.T)
-        # screen.display.blit(surf, (0, 0))
-
-        #pygame.surfarray.blit_array(screen.display, color_map.numpy())
-        #pygame.display.update() #16ms
-        cv2.imshow("VideoFrame", color_map.numpy())
-        '''
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                pygame.quit()
-                sys.exit()
-        '''
-        delay += time.time() - delay_start
-        count += 1
-
-        if count >= 100:
-            delay_logger.print(delay / count * 1000)
-            delay = 0
-            count = 0
-
-        #screen.fps.tick(screen.fps_aim)
+    capture_video(1280,720,render_frame, True, scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos,
+                 camera_direction, start, delay, count, map, color_map, env)
 
 
 if __name__ == "__main__":
@@ -312,10 +302,5 @@ if __name__ == "__main__":
     pose[0:3, 3] = [0, 0, 800]
     camera_pos = np.array([0, 0, -800])
     camera_direction = np.array([0, 0, 1])
-    '''
-    start=time.time()
-    rays = default_rays(1280,720,60,pose)
-    print("rays:", time.time() - start)
-    '''
 
     render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction)
