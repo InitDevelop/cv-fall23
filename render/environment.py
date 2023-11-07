@@ -11,7 +11,7 @@ class Environment:
         xy = np.indices((height, width))
         xyz = np.vstack([xy[::-1], -self.f * np.ones((1,height, width))])
         xyz = np.rollaxis(xyz, 0, 3) - np.array([width/2, height/2, 0])
-        xyz[...,0] *= -1
+        #xyz[...,0] *= -1
 
         norm = np.linalg.norm(xyz, axis=2, keepdims=True)
         self.env = (xyz / norm).reshape(-1, 3)
