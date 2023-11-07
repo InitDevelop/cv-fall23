@@ -1,10 +1,12 @@
 import numpy as np
 import torch
+from numba import jit
 
 from render.render_wireframe import *
 from supports.logger import *
 
 
+@jit(cache=True)
 def default_projector(points, width, height, camera_angle, pose):
     # points : (N,3)
     points_homo = np.ones((points.shape[0], 4))

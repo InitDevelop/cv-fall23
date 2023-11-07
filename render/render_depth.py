@@ -9,11 +9,12 @@ import math
 import torch
 from render.project_points import *
 from multiprocessing import Pool
+import cv2
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
 
-@jit(parallel=True)
+@jit(cache=True)
 def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir):
     # points : N,3
     # projected_points : N,2
@@ -148,31 +149,30 @@ def render_polygon(map, color_map, v, depths, color):
         if start == end: continue
         # print(start_depth, end_depth, start, end)
         depths_line = np.arange(0, end - start) / (end - start) * (end_depth - start_depth) + start_depth
-        filter = depths_line < map[int(x), start:end]
-        map[int(x), start:end] = np.minimum(depths_line, map[int(x), start:end])
-        color_map[start:end, int(x)][filter] = color
+        color_map[int(x),start:end][depths_line < map[int(x), start:end, 0]] = color
+        map[int(x), start:end, 0] = np.minimum(depths_line, map[int(x), start:end, 0])
+
 
     return map
 
 
-@jit(parallel=True)
+@jit
 def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction):
-    screen = Screen()
+    #screen = Screen(width = 480, height = 270, caption="mouse controller")
     start = time.time()
     delay = 0
     count = 0
 
-    img = torch.zeros((1280, 720, 3), device=device)
-    map = torch.ones((720, 1280), device=device)
-    color_map = torch.zeros((1280,720,3), device=device)
+    map = torch.ones((720, 1280,1), device=device)
+    color_map = torch.zeros((720,1280,3), device=device)
 
-    while True:
+    while cv2.waitKey(1) < 0:
         delay_start = time.time()
-        pos = pygame.mouse.get_pos()
+        #pos = pygame.mouse.get_pos()
         dt = (time.time() - start) * 0.8
 
-        ry = dt * 1.7#-(pos[0] - 640) / 400
-        rx = dt * 1.3#(pos[1] - 360) / 400
+        ry = dt * 1.7#-(pos[0] - 240) / 200
+        rx = dt * 1.3#(pos[1] - 135) / 200
 
         rotate_mat_z = np.array([
             [np.cos(dt), -np.sin(dt), 0],
@@ -202,14 +202,16 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
 
         color_map *= 0
 
+        # ~1.4ms
+
         get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces, scene_normals_rot.T, face_colors,
                       camera_pos,
-                      camera_direction)
+                      camera_direction) # 16ms
 
         map -= 1
-        map *= -1.5
+        map *= -1.5 # 0.6ms
 
-        color_map *= map.T.reshape(1280,720,1)
+        color_map *= map # 4ms
 
         # img[..., 0] = map.T
         # img[..., 1] = map.T
@@ -217,16 +219,16 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
 
         # surf = pygame.surfarray.make_surface(map.T)
         # screen.display.blit(surf, (0, 0))
-        pygame.surfarray.blit_array(screen.display, color_map.numpy())
 
-        # render_wireframe(screen, projected_points, scene_lines)
-
-        pygame.display.update()
+        #pygame.surfarray.blit_array(screen.display, color_map.numpy())
+        #pygame.display.update() #16ms
+        cv2.imshow("VideoFrame", color_map.numpy())
+        '''
         for event in pygame.event.get():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
-
+        '''
         delay += time.time() - delay_start
         count += 1
 
@@ -235,7 +237,7 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
             delay = 0
             count = 0
 
-        screen.fps.tick(screen.fps_aim)
+        #screen.fps.tick(screen.fps_aim)
 
 
 if __name__ == "__main__":
@@ -297,7 +299,7 @@ if __name__ == "__main__":
 
     scene_faces = np.vstack([cube_faces + 8 * i for i in range(cube_count)])
 
-    face_colors = np.random.randint(0,255,(scene_faces.shape[0], 3))
+    face_colors = np.random.random((scene_faces.shape[0], 3))
 
     cube_normals = np.array([
         [0, 0, -1],
