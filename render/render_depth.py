@@ -208,9 +208,6 @@ def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, f
 
 @jit
 def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction):
-    capture = cv2.VideoCapture(0)
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     env = Environment(32,18,120)
 
     start = time.time()
