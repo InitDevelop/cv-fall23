@@ -1,3 +1,7 @@
-numpy
+numpy~=1.25.0
 opencv-python~=4.8.0.74
 mediapipe~=0.10.1
+pygame~=2.5.2
+numba~=0.58.1
+Pillow~=10.0.0
+torch~=2.1.0

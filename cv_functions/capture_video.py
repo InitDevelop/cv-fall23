@@ -28,7 +28,7 @@ def capture_video(width, height, function, show_log=True, *args):
             delay_start = time.time()
         frame = cv2.flip(frame, 1)
         frame = function(frame, *args)
-        cv2.imshow("VideoFrame", frame)
+        cv2.imshow("ImmerVision", frame)
         if show_log:
             count += 1
             delay += time.time() - delay_start
