@@ -126,30 +126,28 @@ def render_polygon(map, color_map, v, depths, color):
         # print(x,head_pos,tail_pos, head,tail)
 
         if head_pos < tail_pos:
-            start = min(map.shape[1],max(math.floor(head_pos), 0))
-            end = min(map.shape[1],max(math.ceil(tail_pos) + 1, 0))
+            start = min(map.shape[1], max(math.floor(head_pos), 0))
+            end = min(map.shape[1], max(math.ceil(tail_pos) + 1, 0))
             start_depth = (start - head_pos) * (tail_depth - head_depth) / (tail_pos - head_pos) + head_depth
             end_depth = (end - head_pos) * (tail_depth - head_depth) / (tail_pos - head_pos) + head_depth
         else:
-            start = min(map.shape[1],max(math.floor(tail_pos), 0))
-            end = min(map.shape[1],max(math.ceil(head_pos) + 1, 0))
+            start = min(map.shape[1], max(math.floor(tail_pos), 0))
+            end = min(map.shape[1], max(math.ceil(head_pos) + 1, 0))
             start_depth = (start - tail_pos) * (head_depth - tail_depth) / (head_pos - tail_pos) + tail_depth
             end_depth = (end - tail_pos) * (head_depth - tail_depth) / (head_pos - tail_pos) + tail_depth
 
         if start == end: continue
         # print(start_depth, end_depth, start, end)
         depths_line = np.arange(0, end - start) / (end - start) * (end_depth - start_depth) + start_depth
-        color_map[int(x),start:end][depths_line < map[int(x), start:end, 0]] = color
+        color_map[int(x), start:end][depths_line < map[int(x), start:end, 0]] = color
         map[int(x), start:end, 0] = np.minimum(depths_line, map[int(x), start:end, 0])
-
 
     return map
 
 @jit
 def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
     # delay_start = time.time()
-    # pos = pygame.mouse.get_pos()
-    dt = (time.time() - start) * 0.8
+    dt = np.pi / 8#(time.time() - start) * 0.8
 
     ry = dt * 1.7  # -(pos[0] - 240) / 200
     rx = dt * 1.3  # (pos[1] - 135) / 200
