@@ -1,48 +1,43 @@
 # Built-in function Face detection test
 # this code is only for test
-
+import sys
+sys.path.append('C:\\GITHUB\\cv-fall23')
 import mediapipe as mp
 from cv_functions.capture_video import *
 
-class draw_mesh():
-    def __init__(self, static_image=False, max_n_face=3, redefine_landmarks=True, confidence_detection=0.75,
-                 confidence_tracking=0.75):
 
+class DrawMesh:
+    def __init__(self, static_image=False, max_n_face=1, confidence_detection=0.5, confidence_tracking=0.5):
         self.static_image = static_image
         self.max_n_face = max_n_face
-        self.redifine_landmarks = redefine_landmarks
         self.confidence_detection = confidence_detection
         self.confidence_tracking = confidence_tracking
 
-        self.mpDraw = mp.solutions.drawing_utils
         self.mpFaceMesh = mp.solutions.face_mesh
-        self.faceMesh = self.mpFaceMesh.FaceMesh(self.static_image, self.max_n_face, self.redifine_landmarks,
-                                                 self.confidence_detection, self.confidence_tracking)
-        self.drawSpec = self.mpDraw.DrawingSpec(thickness=1, circle_radius=2)
-        self.mp_drawing_styles = mp.solutions.drawing_styles
+        self.faceMesh = self.mpFaceMesh.FaceMesh(static_image, max_n_face, 
+                                                 refine_landmarks=True,
+                                                 min_detection_confidence=confidence_detection, 
+                                                 min_tracking_confidence=confidence_tracking)
+        self.left_eye_indices = list(range(474, 478))
+        self.right_eye_indices = list(range(469, 473))
 
-    def face_mesh(self, frame, draw=True):
+    def face_mesh(self, frame):
         frameRGB = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.faceMesh.process(frameRGB)
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
-                self.mpDraw.draw_landmarks(
-                    image=frame,
-                    landmark_list=face_landmarks,
-                    connections=self.mpFaceMesh.FACEMESH_TESSELATION,
-                    landmark_drawing_spec=None,
-                    connection_drawing_spec=self.mp_drawing_styles
-                    .get_default_face_mesh_tesselation_style())
-                self.mpDraw.draw_landmarks(
-                    image=frame,
-                    landmark_list=face_landmarks,
-                    connections=self.mpFaceMesh.FACEMESH_CONTOURS,
-                    landmark_drawing_spec=None,
-                    connection_drawing_spec=self.mp_drawing_styles
-                    .get_default_face_mesh_contours_style())
+                left_eye = [(face_landmarks.landmark[idx].x, face_landmarks.landmark[idx].y) 
+                            for idx in self.left_eye_indices]
+                right_eye = [(face_landmarks.landmark[idx].x, face_landmarks.landmark[idx].y) 
+                             for idx in self.right_eye_indices]
+
+                for point in left_eye + right_eye:
+                    x, y = int(point[0] * frame.shape[1]), int(point[1] * frame.shape[0])
+                    cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
+
         return frame
 
-if __name__ == "__main__" :
-    mesh = draw_mesh()
-    capture_video(1280,720,mesh.face_mesh)
+if __name__ == "__main__":
+    mesh = DrawMesh()
+    capture_video(1280, 720, mesh.face_mesh)
