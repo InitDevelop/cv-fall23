@@ -1,8 +1,10 @@
+from render.open_obj import read_file
 from render.project_points import *
 from render.environment import *
 from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
+
 
 @jit(cache=True)
 def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir, frame, env):
@@ -19,7 +21,7 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
 
     culling = depth_nums < 0
     faces = faces[culling]
-    face_colors = env.lambertian(frame,normals[culling]) * face_colors[culling]
+    face_colors = env.lambertian(frame, normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
     # index_map = -np.ones((height, width))
@@ -144,10 +146,12 @@ def render_polygon(map, color_map, v, depths, color):
 
     return map
 
+
 @jit
-def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
+def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
+                 pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
     # delay_start = time.time()
-    dt = np.pi / 8#(time.time() - start) * 0.8
+    dt = np.pi / 8 # (time.time() - start) * 0.8
 
     ry = dt * 1.7  # -(pos[0] - 240) / 200
     rx = dt * 1.3  # (pos[1] - 135) / 200
@@ -206,19 +210,23 @@ def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, f
 
     return color_map.numpy()
 
+
 @jit
-def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction):
-    env = Environment(32,18,120)
+def render_scene(scene_points, scene_lines, scene_faces, scene_normals,
+                 face_colors, pose, camera_pos, camera_direction):
+
+    env = Environment(32, 18, 120)
 
     start = time.time()
     delay = 0
     count = 0
 
-    map = torch.ones((720, 1280,1), device=device)
-    color_map = torch.zeros((720,1280,3), device=device)
+    map = torch.ones((720, 1280, 1), device=device)
+    color_map = torch.zeros((720, 1280, 3), device=device)
 
-    capture_video(1280,720,render_frame, True, scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos,
-                 camera_direction, start, delay, count, map, color_map, env)
+    capture_video(1280, 720, render_frame, True, scene_points, scene_lines,
+                  scene_faces, scene_normals, face_colors, pose,
+                  camera_pos, camera_direction, start, delay, count, map, color_map, env)
 
 
 if __name__ == "__main__":
@@ -227,71 +235,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    cube_count = 27
+    vertices, lines, faces, face_normals = read_file("E:\\polyfile.obj")
 
-    cube_points = np.array(
-        [(100, -100, -100), (-100, -100, -100), (-100, 100, -100), (100, 100, -100), (100, -100, 100),
-         (-100, -100, 100),
-         (-100, 100, 100), (100, 100, 100), ]) / 2
-
-    scene_points = np.vstack([
-        cube_points,
-        cube_points + np.array([150, 0, 0]),
-        cube_points + np.array([-150, 0, 0]),
-        cube_points + np.array([0, 0, 150]),
-        cube_points + np.array([0, 0, -150]),
-        cube_points + np.array([0, 150, 0]),
-        cube_points + np.array([0, -150, 0]),
-        cube_points + np.array([150, 0, 150]),
-        cube_points + np.array([-150, 0, 150]),
-        cube_points + np.array([-150, 0, -150]),
-        cube_points + np.array([150, 0, -150]),
-        cube_points + np.array([150, 150, 0]),
-        cube_points + np.array([-150, 150, 0]),
-        cube_points + np.array([0, 150, 150]),
-        cube_points + np.array([0, 150, -150]),
-        cube_points + np.array([150, 150, 150]),
-        cube_points + np.array([-150, 150, 150]),
-        cube_points + np.array([-150, 150, -150]),
-        cube_points + np.array([150, 150, -150]),
-        cube_points + np.array([150, -150, 0]),
-        cube_points + np.array([-150, -150, 0]),
-        cube_points + np.array([0, -150, 150]),
-        cube_points + np.array([0, -150, -150]),
-        cube_points + np.array([150, -150, 150]),
-        cube_points + np.array([-150, -150, 150]),
-        cube_points + np.array([-150, -150, -150]),
-        cube_points + np.array([150, -150, -150])
-    ])
-
-    cube_lines = np.array(
-        [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4), (0, 4), (1, 5), (2, 6), (3, 7)])
-
-    scene_lines = np.vstack([cube_lines + 8 * i for i in range(cube_count)])
-
-    cube_faces = np.array([
-        (0, 1, 2, 3),
-        (4, 5, 6, 7),
-        (0, 1, 5, 4),
-        (1, 2, 6, 5),
-        (2, 3, 7, 6),
-        (3, 0, 4, 7)
-    ])
-
-    scene_faces = np.vstack([cube_faces + 8 * i for i in range(cube_count)])
+    scene_points = vertices
+    scene_faces = faces
+    scene_lines = lines
+    scene_normals = face_normals
 
     face_colors = np.random.random((scene_faces.shape[0], 3))
-
-    cube_normals = np.array([
-        [0, 0, -1],
-        [0, 0, 1],
-        [0, -1, 0],
-        [-1, 0, 0],
-        [0, 1, 0],
-        [1, 0, 0]
-    ])
-
-    scene_normals = np.vstack([cube_normals for i in range(cube_count)])
 
     pose = np.eye(4, 4)
     pose[0:3, 3] = [0, 0, 800]
