@@ -235,18 +235,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    vertices, lines, faces, face_normals = read_file("E:\\polyfile.obj")
+    vertices, lines, faces, face_normals = read_file("../objects/cat.obj")
 
     scene_points = vertices
     scene_faces = faces
     scene_lines = lines
     scene_normals = face_normals
 
-    face_colors = np.random.random((scene_faces.shape[0], 3))
+    face_colors = np.ones((scene_faces.shape[0], 3)) * 0.7
+    # np.random.random((scene_faces.shape[0], 3))
 
     pose = np.eye(4, 4)
-    pose[0:3, 3] = [0, 0, 800]
-    camera_pos = np.array([0, 0, -800])
+    pose[0:3, 3] = [0, 0, 100]
+    camera_pos = np.array([0, 0, -200])
     camera_direction = np.array([0, 0, 1])
 
     render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction)

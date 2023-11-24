@@ -46,4 +46,4 @@ def canny_function(img):
 
 
 if __name__ == "__main__":
-    capture_video(1280, 720, null_function)
+    capture_video(1280, 720, canny_function)

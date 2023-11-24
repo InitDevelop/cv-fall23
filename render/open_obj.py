@@ -92,7 +92,7 @@ def read_file(path):
                     lines.extend(t_list)
                     faces.append(f_vert)
                     vn_mat = vertex_normals[vn]
-                    face_normals.append([(vn_mat[0] + vn_mat[1] + vn_mat[2]) / 3])
+                    face_normals.append((vn_mat[0] + vn_mat[1] + vn_mat[2]) / 3)
 
                 elif len(tokens) == 5:
                     f_vert_1, f_vert_2, t_list, vn_1, vn_2 = get_quadruple_face(
@@ -102,9 +102,9 @@ def read_file(path):
                     faces.append(f_vert_1)
                     faces.append(f_vert_2)
                     vn_mat_1 = vertex_normals[vn_1]
-                    face_normals.append([(vn_mat_1[0] + vn_mat_1[1] + vn_mat_1[2]) / 3])
+                    face_normals.append((vn_mat_1[0] + vn_mat_1[1] + vn_mat_1[2]) / 3)
                     vn_mat_2 = vertex_normals[vn_2]
-                    face_normals.append([(vn_mat_2[0] + vn_mat_2[1] + vn_mat_2[2]) / 3])
+                    face_normals.append((vn_mat_2[0] + vn_mat_2[1] + vn_mat_2[2]) / 3)
 
     face_normals = np.array(face_normals, dtype=np.float32)
     lines = np.array(lines)
@@ -115,7 +115,7 @@ def read_file(path):
 
 # DEBUG TEST CODE
 if __name__ == "__main__":
-    vertices, lines, faces, face_normals = read_file("E:\\polyfile.obj")
+    vertices, lines, faces, face_normals = read_file("../objects/cat.obj")
     print(vertices.shape)
     print(lines.shape)
     print(faces.shape)
