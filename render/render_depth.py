@@ -151,7 +151,7 @@ def render_polygon(map, color_map, v, depths, color):
 def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
                  pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
     # delay_start = time.time()
-    dt = np.pi / 8 # (time.time() - start) * 0.8
+    dt = (time.time() - start) * 0.8 # np.pi / 8
 
     ry = dt * 1.7  # -(pos[0] - 240) / 200
     rx = dt * 1.3  # (pos[1] - 135) / 200
@@ -235,19 +235,21 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    vertices, lines, faces, face_normals = read_file("../objects/cat.obj")
+    vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
+    # laptop.obj source : https://free3d.com/3d-model/notebook-low-poly-version-57341.html
 
     scene_points = vertices
     scene_faces = faces
     scene_lines = lines
     scene_normals = face_normals
 
-    face_colors = np.ones((scene_faces.shape[0], 3)) * 0.7
+    face_colors = np.ones((scene_faces.shape[0], 3)) * 0.85
     # np.random.random((scene_faces.shape[0], 3))
+    #
 
     pose = np.eye(4, 4)
-    pose[0:3, 3] = [0, 0, 100]
-    camera_pos = np.array([0, 0, -200])
+    pose[0:3, 3] = [0, 0, 12]
+    camera_pos = np.array([0, 0, -12])
     camera_direction = np.array([0, 0, 1])
 
     render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction)

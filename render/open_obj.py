@@ -117,6 +117,8 @@ def read_file(path):
 if __name__ == "__main__":
     vertices, lines, faces, face_normals = read_file("../objects/cat.obj")
     print(vertices.shape)
+    norm = np.linalg.norm(face_normals, 2, 1)
+    print()
     print(lines.shape)
     print(faces.shape)
     print(face_normals.shape)
