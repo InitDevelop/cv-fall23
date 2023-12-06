@@ -1,5 +1,7 @@
 import cv2
 import time
+
+from render.light_ray_render import render_frame
 from supports.logger import *
 
 
@@ -27,7 +29,8 @@ def capture_video(width, height, function, show_log=True, *args):
         if show_log:
             delay_start = time.time()
         frame = cv2.flip(frame, 1)
-        frame = function(frame, *args)
+        frame = render_frame(frame, *args)
+        # frame = function(frame, *args)
         cv2.imshow("ImmerVision", frame)
         if show_log:
             count += 1

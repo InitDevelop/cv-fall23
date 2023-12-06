@@ -5,6 +5,10 @@ from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
+# Parameters
+ppi = 150
+scale = 150  # obj to pixel scale
+depth_ratio = 1.5
 
 @jit(cache=True)
 def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir, frame, env):
@@ -150,35 +154,20 @@ def render_polygon(map, color_map, v, depths, color):
 
 @jit
 def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
+                 pov_pos, start, delay, count, map, color_map, env):
     # delay_start = time.time()
-    dt = (time.time() - start) * 0.8 # np.pi / 8
+    # dt = (time.time() - start) * 0.8 # np.pi / 8
 
-    ry = dt * 1.7  # -(pos[0] - 240) / 200
-    rx = dt * 1.3  # (pos[1] - 135) / 200
+    z_dist = scene_points[:, 2] - pov_pos[:, 2]
 
-    rotate_mat_z = np.array([
-        [np.cos(dt), -np.sin(dt), 0],
-        [np.sin(dt), np.cos(dt), 0],
-        [0, 0, 1]
+    proj_mat = np.array([
+        [pov_pos[2], 0, -pov_pos[0]],
+        [0, pov_pos[2], -pov_pos[1]],
+        [0, 0, 0]
     ])
 
-    rotate_mat_y = np.array([
-        [np.cos(ry), 0, np.sin(ry)],
-        [0, 1, 0],
-        [-np.sin(ry), 0, np.cos(ry)]
-    ])
-
-    rotate_mat_x = np.array([
-        [1, 0, 0],
-        [0, np.cos(rx), -np.sin(rx)],
-        [0, np.sin(rx), np.cos(rx)]
-    ])
-
-    scene_points_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_points.T
-    scene_normals_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_normals.T
-
-    projected_points = default_projector(scene_points_rot.T, 1280, 720, 60, pose)
+    scene_points_proj = proj_mat @ scene_points.T
+    scene_points_proj = scene_points_proj.T / z_dist
 
     map *= 0
     map += 1
@@ -214,7 +203,7 @@ def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, f
 
 @jit
 def render_scene(scene_points, scene_lines, scene_faces, scene_normals,
-                 face_colors, pose, camera_pos, camera_direction):
+                 face_colors, pov_pos):
 
     env = Environment(32, 18, 120)
 
@@ -226,8 +215,8 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals,
     color_map = torch.zeros((720, 1280, 3), device=device)
 
     capture_video(1280, 720, render_frame, True, scene_points, scene_lines,
-                  scene_faces, scene_normals, face_colors, pose,
-                  camera_pos, camera_direction, start, delay, count, map, color_map, env)
+                  scene_faces, scene_normals, face_colors,
+                  pov_pos, start, delay, count, map, color_map, env)
 
 
 if __name__ == "__main__":
@@ -237,9 +226,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
-    # laptop.obj source : https://free3d.com/3d-model/notebook-low-poly-version-57341.html
 
-    scene_points = vertices
+    scene_points = vertices * scale
+    scene_points[:, 2] += -np.min(scene_points[:, 2]) * depth_ratio
+
     scene_faces = faces
     scene_lines = lines
     scene_normals = face_normals
@@ -248,9 +238,7 @@ if __name__ == "__main__":
     # np.random.random((scene_faces.shape[0], 3))
     #
 
-    pose = np.eye(4, 4)
-    pose[0:3, 3] = [0, 0, 12]
-    camera_pos = np.array([0, 0, -12])
-    camera_direction = np.array([0, 0, 1])
+    pov_pos_inch = np.array([0, 0, -40])
+    pov_pos_pixel = pov_pos_inch * ppi
 
-    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction)
+    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos_pixel)
