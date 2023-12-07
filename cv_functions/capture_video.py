@@ -1,12 +1,13 @@
 import cv2
 import time
 
-from render.light_ray_render import render_frame
+import numpy as np
+
+from built_in.face_detection_mediapipe import DrawMesh
 from supports.logger import *
 
 
-def capture_video(width, height, function, show_log, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pov_pos, start, delay, count, map, color_map, env, z_depth):
+def capture_video(width, height, camera_width, camera_height, function, show_log=True, *args):
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -19,6 +20,8 @@ def capture_video(width, height, function, show_log, scene_points, scene_lines, 
     delay = 0
     delay_start = 0
 
+    mesh = DrawMesh()
+
     while cv2.waitKey(1) < 0:
         if show_log:
             if time.time() - start >= 1:
@@ -30,9 +33,11 @@ def capture_video(width, height, function, show_log, scene_points, scene_lines, 
         if show_log:
             delay_start = time.time()
         frame = cv2.flip(frame, 1)
-        frame = render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pov_pos, start, delay, count, map, color_map, env, z_depth)
-        # frame = function(frame, *args)
+        face_frame = np.copy(frame)
+        face_frame = mesh.face_mesh(face_frame)
+        eye_pos = mesh.get_eye_position(face_frame)
+        pov_pos = np.array([eye_pos[0] - camera_width / 2, eye_pos[1] - camera_height / 2, -1000])
+        frame = function(frame, pov_pos, *args)
         cv2.imshow("ImmerVision", frame)
         if show_log:
             count += 1
@@ -42,7 +47,7 @@ def capture_video(width, height, function, show_log, scene_points, scene_lines, 
     cv2.destroyAllWindows()
 
 
-def null_function(x):
+def null_function(x, y):
     return x
 
 
@@ -51,4 +56,4 @@ def canny_function(img):
 
 
 if __name__ == "__main__":
-    capture_video(1280, 720, canny_function)
+    capture_video(1280, 720, null_function)

@@ -5,11 +5,13 @@ from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
-# Parameters
+# Global Parameters
 ppi = 150
-scale = 100  # obj to pixel scale
-depth_ratio = 1.5
+scale = 150  # obj to pixel scale
+depth_ratio = 1.0
 screen_height, screen_width = 720, 1280
+camera_height, camera_width = 720, 1280
+
 
 @jit(cache=True)
 def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, frame, env, z_depth, pov_pos):
@@ -19,8 +21,9 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     # cam_pos : 3,
     # cam_dir : 3,
     cam_pos = pov_pos
-    # cam_pos = np.array([0, 0, -200])
+    # cam_pos = np.array([5000.0, -5000.0, -5000.0])
     cam_dir = np.array([pov_pos[0], pov_pos[1], pov_pos[2] - z_depth])
+    # cam_dir = np.array([-1.0, 1.0, 1.0])
     cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
     point_depths = (points - cam_pos) @ cam_dir / 1200
@@ -161,8 +164,8 @@ def render_polygon(map, color_map, v, depths, color):
 
 
 @jit
-def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pov_pos, start, delay, count, map, color_map, env, z_depth):
+def render_frame(frame, pov_pos, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
+                 start, delay, count, map, color_map, env, z_depth):
     # delay_start = time.time()
     # dt = (time.time() - start) * 0.8 # np.pi / 8
 
@@ -200,7 +203,7 @@ def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, f
 
 
 @jit
-def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos, z_depth):
+def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, z_depth):
     env = Environment(32, 18, 120)
 
     start = time.time()
@@ -210,9 +213,9 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
     map = torch.ones((screen_height, screen_width, 1), device=device)
     color_map = torch.zeros((screen_height, screen_width, 3), device=device)
 
-    capture_video(screen_width, screen_height, render_frame, True, scene_points, scene_lines,
-                  scene_faces, scene_normals, face_colors,
-                  pov_pos, start, delay, count, map, color_map, env, z_depth)
+    capture_video(screen_width, screen_height, camera_width, camera_height, render_frame, True, scene_points,
+                  scene_lines, scene_faces, scene_normals, face_colors,
+                  start, delay, count, map, color_map, env, z_depth)
 
 
 if __name__ == "__main__":
@@ -233,9 +236,5 @@ if __name__ == "__main__":
 
     face_colors = np.ones((scene_faces.shape[0], 3)) * 0.85
     # np.random.random((scene_faces.shape[0], 3))
-    #
 
-    pov_pos_inch = np.array([10, -5, -12])
-    pov_pos_pixel = pov_pos_inch * ppi
-
-    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos_pixel, z_depth)
+    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, z_depth)
