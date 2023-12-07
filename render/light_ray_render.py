@@ -19,8 +19,8 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     # cam_pos : 3,
     # cam_dir : 3,
     cam_pos = pov_pos
-    cam_pos = np.array([0, 0, -200])
-    cam_dir = np.array([-pov_pos[0], -pov_pos[1], z_depth - pov_pos[2]])
+    # cam_pos = np.array([0, 0, -200])
+    cam_dir = np.array([pov_pos[0], pov_pos[1], pov_pos[2] - z_depth])
     cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
     point_depths = (points - cam_pos) @ cam_dir / 1200
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     # np.random.random((scene_faces.shape[0], 3))
     #
 
-    pov_pos_inch = np.array([10, -3, -12])
+    pov_pos_inch = np.array([10, -5, -12])
     pov_pos_pixel = pov_pos_inch * ppi
 
     render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos_pixel, z_depth)
