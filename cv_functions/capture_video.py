@@ -5,7 +5,8 @@ from render.light_ray_render import render_frame
 from supports.logger import *
 
 
-def capture_video(width, height, function, show_log=True, *args):
+def capture_video(width, height, function, show_log, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
+                 pov_pos, start, delay, count, map, color_map, env, z_depth):
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
@@ -29,7 +30,8 @@ def capture_video(width, height, function, show_log=True, *args):
         if show_log:
             delay_start = time.time()
         frame = cv2.flip(frame, 1)
-        frame = render_frame(frame, *args)
+        frame = render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
+                 pov_pos, start, delay, count, map, color_map, env, z_depth)
         # frame = function(frame, *args)
         cv2.imshow("ImmerVision", frame)
         if show_log:

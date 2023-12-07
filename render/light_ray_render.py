@@ -7,24 +7,32 @@ flip_arr = np.array([[0, 1], [1, 0]])
 
 # Parameters
 ppi = 150
-scale = 150  # obj to pixel scale
+scale = 100  # obj to pixel scale
 depth_ratio = 1.5
+screen_height, screen_width = 720, 1280
 
 @jit(cache=True)
-def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir, frame, env):
+def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, frame, env, z_depth, pov_pos):
     # points : N,3
     # projected_points : N,2
     # faces : F,3
     # cam_pos : 3,
     # cam_dir : 3,
+    cam_pos = pov_pos
+    cam_pos = np.array([0, 0, -200])
+    cam_dir = np.array([-pov_pos[0], -pov_pos[1], z_depth - pov_pos[2]])
+    cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
     point_depths = (points - cam_pos) @ cam_dir / 1200
     depth_nums = np.sum((points[faces[:, 0]] - cam_pos) * normals, axis=1)
 
     # face_ind = np.arange(faces.shape[0])
 
-    culling = depth_nums < 0
+    culling = depth_nums < 0 # < 0
     faces = faces[culling]
+
+    # face_colors[:] = 1
+
     face_colors = env.lambertian(frame, normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
@@ -154,37 +162,27 @@ def render_polygon(map, color_map, v, depths, color):
 
 @jit
 def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pov_pos, start, delay, count, map, color_map, env):
+                 pov_pos, start, delay, count, map, color_map, env, z_depth):
     # delay_start = time.time()
     # dt = (time.time() - start) * 0.8 # np.pi / 8
 
-    z_dist = scene_points[:, 2] - pov_pos[:, 2]
-
-    proj_mat = np.array([
-        [pov_pos[2], 0, -pov_pos[0]],
-        [0, pov_pos[2], -pov_pos[1]],
-        [0, 0, 0]
-    ])
-
-    scene_points_proj = proj_mat @ scene_points.T
-    scene_points_proj = scene_points_proj.T / z_dist
+    inter_ratio = pov_pos[2] / (pov_pos[2] - scene_points[:, 2])
+    inter_ratio = np.stack((inter_ratio, inter_ratio, inter_ratio), axis=1)
+    scene_points_converted = pov_pos + inter_ratio * (scene_points - pov_pos)
+    scene_points_converted = scene_points_converted[:, 0:2] + np.array([screen_width / 2, screen_height / 2])
 
     map *= 0
     map += 1
 
     color_map *= 0
 
-    # ~1.4ms
-
-    get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces,
-                  scene_normals_rot.T, face_colors,
-                  camera_pos,
-                  camera_direction, frame, env)  # 16ms
+    get_depth_map(map.numpy(), color_map.numpy(), scene_points, scene_points_converted, scene_faces,
+                  scene_normals, face_colors, frame, env, z_depth, pov_pos)
 
     map -= 1
-    map *= -1.5  # 0.6ms
+    map *= -1.5
 
-    color_map *= map  # 4ms
+    color_map *= map
 
     '''
     cv2.imshow("VideoFrame", color_map.numpy())
@@ -202,21 +200,19 @@ def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, f
 
 
 @jit
-def render_scene(scene_points, scene_lines, scene_faces, scene_normals,
-                 face_colors, pov_pos):
-
+def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos, z_depth):
     env = Environment(32, 18, 120)
 
     start = time.time()
     delay = 0
     count = 0
 
-    map = torch.ones((720, 1280, 1), device=device)
-    color_map = torch.zeros((720, 1280, 3), device=device)
+    map = torch.ones((screen_height, screen_width, 1), device=device)
+    color_map = torch.zeros((screen_height, screen_width, 3), device=device)
 
-    capture_video(1280, 720, render_frame, True, scene_points, scene_lines,
+    capture_video(screen_width, screen_height, render_frame, True, scene_points, scene_lines,
                   scene_faces, scene_normals, face_colors,
-                  pov_pos, start, delay, count, map, color_map, env)
+                  pov_pos, start, delay, count, map, color_map, env, z_depth)
 
 
 if __name__ == "__main__":
@@ -228,7 +224,8 @@ if __name__ == "__main__":
     vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
 
     scene_points = vertices * scale
-    scene_points[:, 2] += -np.min(scene_points[:, 2]) * depth_ratio
+    z_depth = -np.min(scene_points[:, 2]) * depth_ratio
+    scene_points[:, 2] += z_depth
 
     scene_faces = faces
     scene_lines = lines
@@ -238,7 +235,7 @@ if __name__ == "__main__":
     # np.random.random((scene_faces.shape[0], 3))
     #
 
-    pov_pos_inch = np.array([0, 0, -40])
+    pov_pos_inch = np.array([10, -3, -12])
     pov_pos_pixel = pov_pos_inch * ppi
 
-    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos_pixel)
+    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pov_pos_pixel, z_depth)
