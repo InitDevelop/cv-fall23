@@ -1,4 +1,4 @@
-# [ CV Fall Project ]
+# SNU CSE Computer Vision Project
 # ImmerVision - Real Time 3D HoloProjection
 
 **Ji Hun Seo (서지훈, 2021-19397)** markseo0424@snu.ac.kr \
@@ -6,35 +6,64 @@
 **Na Rim Kim (김나림, 2022-17320)** wingedlz@snu.ac.kr \
 **Woo Hyun Kim (김우현, 2022-13625)** tryyoung@snu.ac.kr
 
-## 개요
+## Summary
 
-가상 3D환경을 별도의 장치 없이 3차원으로 인식할 수 있게끔, 운동시차를 활용해 착시 이미지를 Real-time으로 출력한다. 더 나아가, 실제 환경의 Lighting을 반영한 가상 3차원 환경의 실시간 렌더링을 목표로 하여, 더욱 현실감 있는 3차원 뷰를 구현하는 것이 목표이다.
+Our focus is to implement a virtual 3D holographic environment without the aid of virtual reality devices.
+By tracking the eye movement of the user in real-time, this program will output images that would trick the user into feeling that an object actually exist beyond the screen.
+Furthermore, we added a lighting detection feature so that the lighting environment surrounding the user gets reflected on to the virtual images inside the screen.
+Overall, these features will give the user the impression that the object beyond the screen is sharing the same space with the user.
 
-## 사용 라이브러리
-아래 명령어를 통해 설치. (pytorch는 별도 command line 있음.)
+## Key Concepts
+
+ImmerVision uses concepts that were covered in the Computer Vision course at SNU CSE.
+The key concepts used are:
+- Lambertian (Relections and Colors)
+- Projection
+- Camera Coordinates and World Coordinates
+
+
+## Libraries Used
+Use the following command on the command line to install the libraries.
+(For PyTorch, there is a separate command line.)
 ```commandline
 pip install -r requirements.txt
 ```
 
-**opencv** - webcam의 접근, 간단한 영상처리, 영상 출력.
+**opencv** - For accessing the webcam, simple image processing, image output
 
-- 참고 - https://076923.github.io/posts/Python-opencv-2/
+- Reference - https://076923.github.io/posts/Python-opencv-2/
 
-**numpy** - matrix multiplication 등에 활용.
+**numpy** - Utilized for matrix operations (matrix multiplication, etc.)
 
-**mediapipe** - 얼굴 인식 등 built-in function 테스트용, 여건이 안될 시 활용 가능.
+**mediapipe** - Library for detecting images and eyes.
 
-**torch** - 딥러닝용 라이브러리로, matrix의 GPU연산을 쉽게 가능하게 해준다.\
-설치 코드 (터미널에 복사) : 
+**torch** - Despite being widely used for deep-learning, for our project this library will be
+used to perform fast matrix operations using the GPU of the PC.
 ```commandline
  pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
  ```
 
-## 프로젝트 구성
+## Project File Structure
 
-### 인식부
-1. 웹캠으로 사용자 얼굴 인식
-2. 인식된 값을 바탕으로 관찰자의 3차원 위치 계산
-### 표현부
-3. 계산된 값을 바탕으로 3D Projection (wireframe rendering)
-4. 카메라의 위치 및 lighting으로 렌더링 (shaded rendering)
+### Detection
+1. Uses the webcam to detect the eye position
+2. Calculates the horizontal and vertical position of the user's eye
+
+- `built_in/face_detection_mediapipe.py`: Detects the eye position and output the eye position in camera pixels
+- `render/environment.py`: Handles the lighting, and Lambertian calculations
+
+### Rendering
+3. 3D Projection
+4. Rendering the lighting
+
+- `render/light_ray_render.py`: Calculates the projection of the virtual object on the screen, finds the depth of the polygons and renders them
+
+### Others
+- `cv_functions/capture_video.py`: Gets the eye position information from `face_detection_mediapipe.py` and sends the eye position data to `light_ray_render.py`. This is the top of the program, where all the iteration jobs happen.
+- `render/open_obj.py`: Reads the .obj file.
+There are some constraints with the .obj file for ImmerVision. All the vertices must be defined before the vertex normals and the surfaces. Also, all the vertex normals must be defined before the surfaces/
+
+
+## How to Run
+
+Run `main.py` to start the program.
