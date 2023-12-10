@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 
+
 class DrawMesh:
     def __init__(self, static_image=False, max_n_face=1, confidence_detection=0.5, confidence_tracking=0.5):
         self.static_image = static_image
@@ -19,12 +20,15 @@ class DrawMesh:
 
     def face_mesh(self, frame):
         if self.last is not None:
-            roi_x1 = max(0, int(self.last[1][0] / 4 - 200))
-            roi_x2 = min(frame.shape[1] - 1, int(self.last[0][0] / 4 + 200))
-            roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
-            roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
-            # roi_x1, roi_x2 = 0, 1920
-            # roi_y1, roi_y2 = 0, 1080
+            # --- For better performance / but frequent misses
+            # roi_x1 = max(0, int(self.last[1][0] / 4 - 200))
+            # roi_x2 = min(frame.shape[1] - 1, int(self.last[0][0] / 4 + 200))
+            # roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
+            # roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
+
+            # --- Lower performance, but better catching
+            roi_x1, roi_x2 = 0, 1920
+            roi_y1, roi_y2 = 0, 1080
         else:
             roi_x1, roi_x2 = 0, frame.shape[1]
             roi_y1, roi_y2 = 0, frame.shape[0]
@@ -53,19 +57,20 @@ class DrawMesh:
             cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
             x, y = self.last[1]
             cv2.circle(frame, (x, y), 2, (0, 255, 0), -1)
-            print("No new landmarks")
         # print((self.last[0][0] + self.last[1][0]) / 8, (self.last[0][1] + self.last[1][1]) / 8)
 
         return frame
 
+    # returns the x value, y value and the diff value
     def get_eye_position(self, frame):
         if self.last is not None:
-            roi_x1 = max(0, int(self.last[1][0] / 4 - 200))
-            roi_x2 = min(frame.shape[1] - 1, int(self.last[0][0] / 4 + 200))
-            roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
-            roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
-            # roi_x1, roi_x2 = 0, 1920
-            # roi_y1, roi_y2 = 0, 1080
+            # roi_x1 = max(0, int(self.last[1][0] / 4 - 200))
+            # roi_x2 = min(frame.shape[1] - 1, int(self.last[0][0] / 4 + 200))
+            # roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
+            # roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
+
+            roi_x1, roi_x2 = 0, 1920
+            roi_y1, roi_y2 = 0, 1080
         else:
             roi_x1, roi_x2 = 0, 1919
             roi_y1, roi_y2 = 0, 1079
@@ -90,9 +95,11 @@ class DrawMesh:
             # If no new landmarks, use the last known positions
             x, y = self.last[0]
             x, y = self.last[1]
-        return (self.last[0][0] + self.last[1][0]) / 8, (self.last[0][1] + self.last[1][1]) / 8
+        return ((self.last[0][0] + self.last[1][0]) / 8,
+                (self.last[0][1] + self.last[1][1]) / 8,
+                (self.last[0][0] - self.last[1][0]) / 8)
 
-#
+
 # if __name__ == "__main__":
 #     mesh = DrawMesh()
-#     capture_video(1280, 720, mesh.face_mesh)
+#     capture_video(1280, 720, 1280, 720, mesh.face_mesh)

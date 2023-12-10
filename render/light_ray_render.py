@@ -1,14 +1,13 @@
 from render.open_obj import read_file
 from render.project_points import *
 from render.environment import *
-from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
 # Global Parameters
-ppi = 150
 scale = 150  # obj to pixel scale
-depth_ratio = 1.0
+depth_ratio = 1.8
+depth_margin_ratio = 0.4    # smaller than 0.5
 screen_height, screen_width = 720, 1280
 camera_height, camera_width = 720, 1280
 
@@ -22,11 +21,16 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     # cam_dir : 3,
     cam_pos = pov_pos
     # cam_pos = np.array([5000.0, -5000.0, -5000.0])
-    cam_dir = np.array([pov_pos[0], pov_pos[1], pov_pos[2] - z_depth])
+    cam_dir = np.array([-pov_pos[0], -pov_pos[1], -pov_pos[2] + z_depth])
     # cam_dir = np.array([-1.0, 1.0, 1.0])
     cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
-    point_depths = (points - cam_pos) @ cam_dir / 1200
+    point_depths = (points - cam_pos) @ cam_dir
+
+    min_depth = np.min(point_depths) * (1 - depth_margin_ratio)
+    depth_range = np.max(point_depths) * (1 + depth_margin_ratio) - min_depth
+
+    point_depths = (point_depths - min_depth) / depth_range
     depth_nums = np.sum((points[faces[:, 0]] - cam_pos) * normals, axis=1)
 
     # face_ind = np.arange(faces.shape[0])
@@ -35,7 +39,6 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     faces = faces[culling]
 
     # face_colors[:] = 1
-
     face_colors = env.lambertian(frame, normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
@@ -218,23 +221,42 @@ def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_col
                   start, delay, count, map, color_map, env, z_depth)
 
 
-if __name__ == "__main__":
+def initiate(path):
     delay_logger = logger()
     delay_logger.set_log("delay : %s ms")
 
+    global device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
+    vertices, lines, faces, face_normals = read_file(path)
 
     scene_points = vertices * scale
-    z_depth = -np.min(scene_points[:, 2]) * depth_ratio
-    scene_points[:, 2] += z_depth
 
     scene_faces = faces
     scene_lines = lines
+
+    # Normalizing scale and transformation of the scene points
+    max_x = np.max(scene_points[:, 0])
+    min_x = np.min(scene_points[:, 0])
+
+    max_y = np.max(scene_points[:, 1])
+    min_y = np.min(scene_points[:, 1])
+
+    # scene_points[:, :] -= np.array([(max_x - min_x) / 2, (max_y - min_y) / 2, (max_z - min_z) / 2])
+
+    scene_points[:, 2] += - np.min(scene_points[:, 2]) * depth_ratio
+
+    max_z = np.max(scene_points[:, 2])
+    min_z = np.min(scene_points[:, 2])
+
+    z_depth = (max_z + min_z) / 2
+
     scene_normals = face_normals
 
-    face_colors = np.ones((scene_faces.shape[0], 3)) * 0.85
-    # np.random.random((scene_faces.shape[0], 3))
+    # scene_points[:, 1] *= -1
+    # scene_normals[:, 1] *= -1
+
+    face_colors = np.ones((scene_faces.shape[0], 3))
+    # face_colors = np.random.random((scene_faces.shape[0], 3))
 
     render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, z_depth)
