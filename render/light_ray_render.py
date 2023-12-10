@@ -1,26 +1,39 @@
 from render.open_obj import read_file
 from render.project_points import *
 from render.environment import *
-from cv_functions.capture_video import *
 
 flip_arr = np.array([[0, 1], [1, 0]])
 
+# Global Parameters
+scale = 150  # obj to pixel scale
+depth_ratio = 1.8
+depth_margin_ratio = 0.4    # smaller than 0.5
+screen_height, screen_width = 720, 1280
+camera_height, camera_width = 720, 1280
+
 
 @jit(cache=True)
-def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, cam_pos, cam_dir, frame, env):
+def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, frame, env, z_depth, pov_pos):
     # points : N,3
     # projected_points : N,2
     # faces : F,3
     # cam_pos : 3,
     # cam_dir : 3,
+    cam_pos = pov_pos
+    cam_dir = np.array([-pov_pos[0], -pov_pos[1], -pov_pos[2] + z_depth])
+    cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
-    point_depths = (points - cam_pos) @ cam_dir / 1200
+    point_depths = (points - cam_pos) @ cam_dir
+
+    min_depth = np.min(point_depths) * (1 - depth_margin_ratio)
+    depth_range = np.max(point_depths) * (1 + depth_margin_ratio) - min_depth
+
+    point_depths = (point_depths - min_depth) / depth_range
     depth_nums = np.sum((points[faces[:, 0]] - cam_pos) * normals, axis=1)
-
-    # face_ind = np.arange(faces.shape[0])
 
     culling = depth_nums < 0
     faces = faces[culling]
+
     face_colors = env.lambertian(frame, normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
@@ -29,9 +42,7 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     for i in range(faces.shape[0]):
         face = faces[i]
         face_color = face_colors[i]
-
         render_polygon(map, color_map, proj_points[face], point_depths[face], face_color)
-        # render_triangle(depth_map, proj_points[face])
 
 
 @jit(cache=True)
@@ -149,108 +160,68 @@ def render_polygon(map, color_map, v, depths, color):
 
 
 @jit
-def render_frame(frame, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
-                 pose, camera_pos, camera_direction, start, delay, count, map, color_map, env):
-    # delay_start = time.time()
-    dt = (time.time() - start) * 0.8 # np.pi / 8
-
-    ry = dt * 1.7  # -(pos[0] - 240) / 200
-    rx = dt * 1.3  # (pos[1] - 135) / 200
-
-    rotate_mat_z = np.array([
-        [np.cos(dt), -np.sin(dt), 0],
-        [np.sin(dt), np.cos(dt), 0],
-        [0, 0, 1]
-    ])
-
-    rotate_mat_y = np.array([
-        [np.cos(ry), 0, np.sin(ry)],
-        [0, 1, 0],
-        [-np.sin(ry), 0, np.cos(ry)]
-    ])
-
-    rotate_mat_x = np.array([
-        [1, 0, 0],
-        [0, np.cos(rx), -np.sin(rx)],
-        [0, np.sin(rx), np.cos(rx)]
-    ])
-
-    scene_points_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_points.T
-    scene_normals_rot = rotate_mat_x @ rotate_mat_y @ rotate_mat_z @ scene_normals.T
-
-    projected_points = default_projector(scene_points_rot.T, 1280, 720, 60, pose)
+def render_frame(frame, pov_pos, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
+                 start, delay, count, map, color_map, env, z_depth):
+    inter_ratio = pov_pos[2] / (pov_pos[2] - scene_points[:, 2])
+    inter_ratio = np.stack((inter_ratio, inter_ratio, inter_ratio), axis=1)
+    scene_points_converted = pov_pos + inter_ratio * (scene_points - pov_pos)
+    scene_points_converted = scene_points_converted[:, 0:2] + np.array([screen_width / 2, screen_height / 2])
 
     map *= 0
     map += 1
 
     color_map *= 0
 
-    # ~1.4ms
-
-    get_depth_map(map.numpy(), color_map.numpy(), scene_points_rot.T, projected_points, scene_faces,
-                  scene_normals_rot.T, face_colors,
-                  camera_pos,
-                  camera_direction, frame, env)  # 16ms
+    get_depth_map(map.numpy(), color_map.numpy(), scene_points, scene_points_converted, scene_faces,
+                  scene_normals, face_colors, frame, env, z_depth, pov_pos)
 
     map -= 1
-    map *= -1.5  # 0.6ms
-
-    color_map *= map  # 4ms
-
-    '''
-    cv2.imshow("VideoFrame", color_map.numpy())
-
-    delay += time.time() - delay_start
-    count += 1
-
-    if count >= 100:
-        delay_logger.print(delay / count * 1000)
-        delay = 0
-        count = 0
-    '''
+    map *= -1.5
+    color_map *= map
 
     return color_map.numpy()
 
 
 @jit
-def render_scene(scene_points, scene_lines, scene_faces, scene_normals,
-                 face_colors, pose, camera_pos, camera_direction):
-
+def render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, z_depth):
     env = Environment(32, 18, 120)
 
     start = time.time()
     delay = 0
     count = 0
 
-    map = torch.ones((720, 1280, 1), device=device)
-    color_map = torch.zeros((720, 1280, 3), device=device)
+    map = torch.ones((screen_height, screen_width, 1), device=device)
+    color_map = torch.zeros((screen_height, screen_width, 3), device=device)
 
-    capture_video(1280, 720, render_frame, True, scene_points, scene_lines,
-                  scene_faces, scene_normals, face_colors, pose,
-                  camera_pos, camera_direction, start, delay, count, map, color_map, env)
+    capture_video(screen_width, screen_height, camera_width, camera_height, render_frame, True, scene_points,
+                  scene_lines, scene_faces, scene_normals, face_colors,
+                  start, delay, count, map, color_map, env, z_depth)
 
 
-if __name__ == "__main__":
+def initiate(path):
     delay_logger = logger()
     delay_logger.set_log("delay : %s ms")
 
+    global device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
-    # laptop.obj source : https://free3d.com/3d-model/notebook-low-poly-version-57341.html
+    vertices, lines, faces, face_normals = read_file(path)
 
-    scene_points = vertices
+    scene_points = vertices * scale
+
     scene_faces = faces
     scene_lines = lines
+
+    scene_points[:, 2] += - np.min(scene_points[:, 2]) * depth_ratio
+
+    max_z = np.max(scene_points[:, 2])
+    min_z = np.min(scene_points[:, 2])
+
+    z_depth = (max_z + min_z) / 2
+
     scene_normals = face_normals
 
-    face_colors = np.ones((scene_faces.shape[0], 3)) * 0.85
-    # np.random.random((scene_faces.shape[0], 3))
-    #
+    face_colors = np.ones((scene_faces.shape[0], 3))
+    # face_colors = np.random.random((scene_faces.shape[0], 3))
 
-    pose = np.eye(4, 4)
-    pose[0:3, 3] = [0, 0, 12]
-    camera_pos = np.array([0, 0, -12])
-    camera_direction = np.array([0, 0, 1])
-
-    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, pose, camera_pos, camera_direction)
+    render_scene(scene_points, scene_lines, scene_faces, scene_normals, face_colors, z_depth)

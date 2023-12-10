@@ -1,7 +1,4 @@
-# main file
+from render.light_ray_render import initiate
 
-
-if __name__ == "__main__" :
-    print("========================[START]========================")
-    print("CV Project : ImmerVision - Real Time 3D HoloProjection")
-    print("=========================[END]=========================")
+if __name__ == "__main__":
+    initiate("./objects/laptop_rot.obj")

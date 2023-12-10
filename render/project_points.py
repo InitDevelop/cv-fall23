@@ -37,7 +37,7 @@ def default_rays(width, height, camera_angle, pose):
 
     f = width / (2 * np.tan(camera_angle / 360 * np.pi))
 
-    uv = np.vstack([uv, f * np.ones((1,height, width)), np.ones((1,height, width))])
+    uv = np.vstack([uv, f * np.ones((1, height, width)), np.ones((1, height, width))])
     uv = np.rollaxis(uv, 0, 2)
 
     rays = np.linalg.inv(pose) @ uv
