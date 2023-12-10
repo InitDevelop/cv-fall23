@@ -20,9 +20,7 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     # cam_pos : 3,
     # cam_dir : 3,
     cam_pos = pov_pos
-    # cam_pos = np.array([5000.0, -5000.0, -5000.0])
     cam_dir = np.array([-pov_pos[0], -pov_pos[1], -pov_pos[2] + z_depth])
-    # cam_dir = np.array([-1.0, 1.0, 1.0])
     cam_dir /= np.linalg.norm(cam_dir, ord=2)
 
     point_depths = (points - cam_pos) @ cam_dir
@@ -33,12 +31,9 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     point_depths = (point_depths - min_depth) / depth_range
     depth_nums = np.sum((points[faces[:, 0]] - cam_pos) * normals, axis=1)
 
-    # face_ind = np.arange(faces.shape[0])
-
-    culling = depth_nums < 0 # < 0
+    culling = depth_nums < 0
     faces = faces[culling]
 
-    # face_colors[:] = 1
     face_colors = env.lambertian(frame, normals[culling]) * face_colors[culling]
 
     proj_points = proj_points @ flip_arr
@@ -47,9 +42,7 @@ def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colo
     for i in range(faces.shape[0]):
         face = faces[i]
         face_color = face_colors[i]
-
         render_polygon(map, color_map, proj_points[face], point_depths[face], face_color)
-        # render_triangle(depth_map, proj_points[face])
 
 
 @jit(cache=True)
@@ -169,9 +162,6 @@ def render_polygon(map, color_map, v, depths, color):
 @jit
 def render_frame(frame, pov_pos, scene_points, scene_lines, scene_faces, scene_normals, face_colors,
                  start, delay, count, map, color_map, env, z_depth):
-    # delay_start = time.time()
-    # dt = (time.time() - start) * 0.8 # np.pi / 8
-
     inter_ratio = pov_pos[2] / (pov_pos[2] - scene_points[:, 2])
     inter_ratio = np.stack((inter_ratio, inter_ratio, inter_ratio), axis=1)
     scene_points_converted = pov_pos + inter_ratio * (scene_points - pov_pos)
@@ -187,20 +177,7 @@ def render_frame(frame, pov_pos, scene_points, scene_lines, scene_faces, scene_n
 
     map -= 1
     map *= -1.5
-
     color_map *= map
-
-    '''
-    cv2.imshow("VideoFrame", color_map.numpy())
-
-    delay += time.time() - delay_start
-    count += 1
-
-    if count >= 100:
-        delay_logger.print(delay / count * 1000)
-        delay = 0
-        count = 0
-    '''
 
     return color_map.numpy()
 
@@ -235,15 +212,6 @@ def initiate(path):
     scene_faces = faces
     scene_lines = lines
 
-    # Normalizing scale and transformation of the scene points
-    max_x = np.max(scene_points[:, 0])
-    min_x = np.min(scene_points[:, 0])
-
-    max_y = np.max(scene_points[:, 1])
-    min_y = np.min(scene_points[:, 1])
-
-    # scene_points[:, :] -= np.array([(max_x - min_x) / 2, (max_y - min_y) / 2, (max_z - min_z) / 2])
-
     scene_points[:, 2] += - np.min(scene_points[:, 2]) * depth_ratio
 
     max_z = np.max(scene_points[:, 2])
@@ -252,9 +220,6 @@ def initiate(path):
     z_depth = (max_z + min_z) / 2
 
     scene_normals = face_normals
-
-    # scene_points[:, 1] *= -1
-    # scene_normals[:, 1] *= -1
 
     face_colors = np.ones((scene_faces.shape[0], 3))
     # face_colors = np.random.random((scene_faces.shape[0], 3))

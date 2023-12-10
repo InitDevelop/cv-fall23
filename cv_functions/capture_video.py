@@ -11,6 +11,7 @@ eye_separation_inches = 3.5
 fov_camera = 100
 ppi = 150
 
+
 def capture_video(width, height, camera_width, camera_height, function, show_log=True, *args):
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
