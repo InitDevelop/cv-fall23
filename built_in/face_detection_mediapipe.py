@@ -27,8 +27,8 @@ class DrawMesh:
             # roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
 
             # --- Lower performance, but better catching
-            roi_x1, roi_x2 = 0, 1920
-            roi_y1, roi_y2 = 0, 1080
+            roi_x1, roi_x2 = 0, 1280
+            roi_y1, roi_y2 = 0, 720
         else:
             roi_x1, roi_x2 = 0, frame.shape[1]
             roi_y1, roi_y2 = 0, frame.shape[0]
@@ -69,11 +69,11 @@ class DrawMesh:
             # roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
             # roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
 
-            roi_x1, roi_x2 = 0, 1920
-            roi_y1, roi_y2 = 0, 1080
+            roi_x1, roi_x2 = 0, 1280
+            roi_y1, roi_y2 = 0, 720
         else:
-            roi_x1, roi_x2 = 0, 1919
-            roi_y1, roi_y2 = 0, 1079
+            roi_x1, roi_x2 = 0, 1280 - 1
+            roi_y1, roi_y2 = 0, 720 - 1
 
         roi_frame = frame[roi_y1:roi_y2, roi_x1:roi_x2]
         frameRGB = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2RGB)
@@ -100,6 +100,8 @@ class DrawMesh:
                 (self.last[0][0] - self.last[1][0]) / 8)
 
 
-# if __name__ == "__main__":
-#     mesh = DrawMesh()
-#     capture_video(1280, 720, 1280, 720, mesh.face_mesh)
+'''
+if __name__ == "__main__":
+    mesh = DrawMesh()
+    capture_video(1280, 720, 1280, 720, mesh.face_mesh)
+'''

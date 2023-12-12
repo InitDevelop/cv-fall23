@@ -69,9 +69,17 @@ def read_file(path):
     with open(path, 'r') as file:
         string_list = file.readlines()
 
+        reformat_lines = []
+
+        for token in ['v ','vn ','f ']:
+            for line in string_list:
+                if token in line:
+                    reformat_lines.append(line)
+
+
         finished = False
 
-        for line in string_list:
+        for line in reformat_lines:
             tokens = line.split()
             if not tokens:
                 continue

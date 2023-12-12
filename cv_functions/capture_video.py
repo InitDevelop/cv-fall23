@@ -6,10 +6,9 @@ import numpy as np
 from built_in.face_detection_mediapipe import DrawMesh
 from supports.logger import *
 
-depth_in_pixels = 6000
-eye_separation_inches = 3.5
-fov_camera = 100
-ppi = 150
+eye_separation_inches = 3
+fov_camera = 90
+ppi = 126
 
 
 def capture_video(width, height, camera_width, camera_height, function, show_log=True, *args):
@@ -25,7 +24,8 @@ def capture_video(width, height, camera_width, camera_height, function, show_log
     delay = 0
     delay_start = 0
 
-    depth_const = ppi * camera_width * eye_separation_inches / (2 * np.tan(fov_camera * np.pi / 360))
+    f = camera_width / (2 * np.tan(fov_camera * np.pi / 360))
+    depth_const = ppi * eye_separation_inches * f
 
     mesh = DrawMesh()
 
@@ -45,11 +45,11 @@ def capture_video(width, height, camera_width, camera_height, function, show_log
 
         eye_pos = mesh.get_eye_position(face_frame)
 
-        depth = 1500    # depth_const / np.abs(eye_pos[2])
+        depth = depth_const / np.abs(eye_pos[2])
 
         pov_pos = np.array(
-            [eye_pos[0] - camera_width / 2,
-             eye_pos[1] - camera_height / 2,
+            [depth / f * (eye_pos[0] - camera_width / 2),
+             depth / f * (eye_pos[1] - camera_height / 2),
              -depth])
 
         frame = function(face_frame, pov_pos, *args)

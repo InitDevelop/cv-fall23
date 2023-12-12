@@ -212,7 +212,7 @@ def initiate(path):
     scene_faces = faces
     scene_lines = lines
 
-    scene_points[:, 2] += - np.min(scene_points[:, 2]) * depth_ratio
+    #scene_points[:, 2] += - np.min(scene_points[:, 2]) * depth_ratio
 
     max_z = np.max(scene_points[:, 2])
     min_z = np.min(scene_points[:, 2])
