@@ -1,6 +1,6 @@
 import cv2
 import mediapipe as mp
-
+from constants.constants import *
 
 class DrawMesh:
     def __init__(self, static_image=False, max_n_face=1, confidence_detection=0.5, confidence_tracking=0.5):
@@ -69,11 +69,11 @@ class DrawMesh:
             # roi_y1 = max(0, int((self.last[0][1] + self.last[1][1]) / 8 - 50))
             # roi_y2 = min(frame.shape[0] - 1, int((self.last[0][1] + self.last[1][1]) / 8 + 50))
 
-            roi_x1, roi_x2 = 0, 1280
-            roi_y1, roi_y2 = 0, 720
+            roi_x1, roi_x2 = 0, camera_width
+            roi_y1, roi_y2 = 0, camera_height
         else:
-            roi_x1, roi_x2 = 0, 1280 - 1
-            roi_y1, roi_y2 = 0, 720 - 1
+            roi_x1, roi_x2 = 0, camera_width - 1
+            roi_y1, roi_y2 = 0, camera_height - 1
 
         roi_frame = frame[roi_y1:roi_y2, roi_x1:roi_x2]
         frameRGB = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2RGB)

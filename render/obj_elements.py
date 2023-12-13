@@ -1,16 +1,12 @@
 from render.open_obj import read_file
 import numpy as np
 
-# Parameters
-ppi = 150
-scale = 100  # obj to pixel scale
-depth_ratio = 1.5
-screen_height, screen_width = 720, 1280
+from constants.constants import *
 
 vertices, lines, faces, face_normals = read_file("../objects/laptop.obj")
 
 scene_points = vertices * scale
-z_depth = -np.min(scene_points[:, 2]) * depth_ratio
+z_depth = 0#-np.min(scene_points[:, 2]) * depth_ratio
 scene_points[:, 2] += z_depth
 
 scene_faces = faces

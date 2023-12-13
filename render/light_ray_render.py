@@ -2,15 +2,9 @@ from render.open_obj import read_file
 from render.project_points import *
 from render.environment import *
 
+from constants.constants import *
+
 flip_arr = np.array([[0, 1], [1, 0]])
-
-# Global Parameters
-scale = 150  # obj to pixel scale
-depth_ratio = 1.8
-depth_margin_ratio = 0.4    # smaller than 0.5
-screen_height, screen_width = 720, 1280
-camera_height, camera_width = 720, 1280
-
 
 @jit(cache=True)
 def get_depth_map(map, color_map, points, proj_points, faces, normals, face_colors, frame, env, z_depth, pov_pos):

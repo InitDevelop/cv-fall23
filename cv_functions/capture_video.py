@@ -5,10 +5,7 @@ import numpy as np
 
 from built_in.face_detection_mediapipe import DrawMesh
 from supports.logger import *
-
-eye_separation_inches = 3
-fov_camera = 90
-ppi = 126
+from constants.constants import *
 
 
 def capture_video(width, height, camera_width, camera_height, function, show_log=True, *args):
